@@ -23,7 +23,7 @@ const FIREBASE_CONFIG = {
 // After you log in once, open browser console and type:
 //   firebase.auth().currentUser.uid
 // Paste that value here:
-const ADMIN_UID = "zCHrGIQz8IgNXnB8roFbh3V3ROO2";
+const ADMIN_UID = "8i3o4CxoSpSAQwgyEBAzaNa5LCq1";
 </script>
 <!-- ═══════════════════════════════════════════════════════════ -->
 
@@ -225,10 +225,12 @@ let editAgentId = null;
 
 auth.onAuthStateChanged(async user => {
   if (!user) { show('auth'); return; }
-  if (ADMIN_UID !== 'PASTE_YOUR_ADMIN_UID_HERE' && user.uid !== ADMIN_UID) {
+  // Check if this is the admin
+  if (user.uid !== ADMIN_UID) {
     show('auth');
-    document.getElementById('authErr').textContent = 'Access denied. Not an admin account.';
-    document.getElementById('authErr').style.display = 'block';
+    const err = document.getElementById('authErr');
+    err.textContent = 'Access denied. Use your admin email. Your UID: ' + user.uid;
+    err.style.display = 'block';
     auth.signOut();
     return;
   }

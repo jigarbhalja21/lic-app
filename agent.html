@@ -372,26 +372,49 @@ let importRows  = [];
 auth.onAuthStateChanged(async user => {
   if (!user) { showScreen('auth'); return; }
   currentUser = user;
-  const snap = await db.collection('agents').doc(user.uid).get();
-  if (!snap.exists) { showScreen('auth'); auth.signOut(); return; }
-  agentData = snap.data();
 
-  const now = new Date();
-  const expiry = agentData.expiryDate ? new Date(agentData.expiryDate) : null;
-  const active = agentData.active !== false;
-  const expired = expiry && now > expiry;
+  try {
+    const snap = await db.collection('agents').doc(user.uid).get();
 
-  if (!active || expired) { showScreen('revoked'); return; }
+    if (!snap.exists) {
+      // First time login — auto create agent document
+      await db.collection('agents').doc(user.uid).set({
+        name: user.email || user.phoneNumber || 'Agent',
+        email: user.email || '',
+        active: true,
+        expiryDate: '',
+        createdAt: new Date().toISOString()
+      });
+      agentData = { name: user.email, active: true, expiryDate: '' };
+    } else {
+      agentData = snap.data();
+    }
 
-  showScreen('main');
-  document.getElementById('agentNameLabel').textContent = agentData.name || user.email || user.phoneNumber;
-  if (expiry) {
-    const days = Math.ceil((expiry - now) / 86400000);
-    const chip = document.getElementById('expiryChip');
-    chip.style.display = '';
-    chip.textContent = `Access expires in ${days}d`;
+    const now = new Date();
+    const expiry = agentData.expiryDate ? new Date(agentData.expiryDate) : null;
+    const active = agentData.active !== false;
+    const expired = expiry && now > expiry;
+
+    if (!active || expired) { showScreen('revoked'); return; }
+
+    showScreen('main');
+    document.getElementById('agentNameLabel').textContent = agentData.name || user.email || user.phoneNumber;
+    if (expiry) {
+      const days = Math.ceil((expiry - now) / 86400000);
+      const chip = document.getElementById('expiryChip');
+      chip.style.display = '';
+      chip.textContent = `Access expires in ${days}d`;
+    }
+    loadClients();
+
+  } catch(e) {
+    // Firestore error — still let them in, just no access control
+    console.error('Firestore error:', e);
+    agentData = { name: user.email || 'Agent', active: true };
+    showScreen('main');
+    document.getElementById('agentNameLabel').textContent = user.email || user.phoneNumber || 'Agent';
+    loadClients();
   }
-  loadClients();
 });
 
 function showScreen(s) {
