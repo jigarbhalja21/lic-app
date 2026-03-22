@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LIC Premium Reminder — Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════
+     🔥 STEP 1: REPLACE THESE VALUES WITH YOUR FIREBASE CONFIG
+     (See SETUP_GUIDE.html for instructions)
+════════════════════════════════════════════════════════════ -->
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDDD7ZNcfpedsiF6vEiG9ezwwwKV4YEfOs",
+  authDomain:        "lic-reminder-cd628.firebaseapp.com",
+  projectId:         "lic-reminder-cd628",
+  storageBucket:     "lic-reminder-cd628.firebasestorage.app",
+  messagingSenderId: "876821829785",
+  appId:             "1:876821829785:web:fe56edc6946b87d4918008"
+};
+</script>
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{--bg:#0f1923;--surface:#182233;--card:#1e2d42;--border:#2a3f5a;--accent:#00c853;--accent2:#00e5ff;--warn:#ff6d00;--red:#ff3d57;--text:#e8f0fe;--muted:#7a92ad;--wa:#25D366;--done:#7c83d1;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* ── AUTH SCREEN ── */
+#authScreen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.auth-logo{width:72px;height:72px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:20px;}
+.auth-title{font-family:'Baloo 2',cursive;font-size:26px;font-weight:800;text-align:center;margin-bottom:4px;}
+.auth-title span{color:var(--accent);}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:32px;text-align:center;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:360px;}
+.auth-tabs{display:flex;gap:0;margin-bottom:20px;background:var(--card);border-radius:10px;padding:3px;}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px;transition:all .2s;}
+.auth-tab.active{background:var(--surface);color:var(--accent2);}
+.afield{margin-bottom:14px;}
+.afield label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;}
+.afield input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-size:14px;outline:none;font-family:'Noto Sans',sans-serif;}
+.afield input:focus{border-color:var(--accent2);}
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),#00a844);border:none;border-radius:10px;color:#fff;font-family:'Baloo 2',cursive;font-size:16px;font-weight:700;padding:13px;cursor:pointer;margin-top:4px;}
+.btn-secondary{width:100%;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;padding:11px;cursor:pointer;margin-top:8px;}
+.auth-err{background:rgba(255,61,87,.12);border:1px solid rgba(255,61,87,.3);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--red);margin-top:12px;display:none;}
+.otp-sent{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.25);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--accent);margin-top:12px;display:none;}
+#recaptcha-container{margin-top:10px;}
+
+/* ── REVOKED ── */
+#revokedScreen{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+.revoked-icon{font-size:64px;margin-bottom:20px;}
+.revoked-title{font-family:'Baloo 2',cursive;font-size:24px;font-weight:800;color:var(--red);margin-bottom:10px;}
+.revoked-msg{font-size:14px;color:var(--muted);line-height:1.7;max-width:300px;}
+
+/* ── MAIN APP ── */
+#mainApp{display:none;}
+.header{background:linear-gradient(135deg,#0d2137,#132a45);padding:16px 20px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.4);}
+.header-top{display:flex;align-items:center;justify-content:space-between;}
+.header-left{display:flex;align-items:center;gap:10px;}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header h1{font-family:'Baloo 2',cursive;font-size:18px;font-weight:800;line-height:1.1;}
+.header h1 span{color:var(--accent);}
+.header p{font-size:10px;color:var(--muted);}
+.btn-logout{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;padding:6px 10px;cursor:pointer;}
+.stats-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.stat-chip{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.stat-chip b{color:var(--text);font-size:12px;}
+.stat-chip.overdue b{color:var(--red);}
+.stat-chip.soon b{color:var(--warn);}
+.stat-chip.done b{color:var(--done);}
+.expiry-chip{background:rgba(255,109,0,.1);border:1px solid rgba(255,109,0,.3);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--warn);}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:98px;z-index:99;overflow-x:auto;}
+.tab{flex:1;min-width:65px;padding:9px 4px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent2);}
+
+.toolbar{display:flex;gap:8px;padding:10px 14px;background:var(--surface);}
+.search-wrap{flex:1;position:relative;}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
+.search-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px 8px 32px;color:var(--text);font-size:13px;outline:none;}
+.search-input:focus{border-color:var(--accent2);}
+.btn-import{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);border-radius:10px;color:var(--accent2);font-size:12px;font-weight:600;padding:8px 12px;cursor:pointer;white-space:nowrap;}
+
+.list{padding:10px 14px 100px;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:14px 0 8px;}
+.section-label.overdue{color:var(--red);}
+.section-label.soon{color:var(--warn);}
+.section-label.ok{color:var(--accent);}
+.section-label.completed{color:var(--done);}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px;position:relative;overflow:hidden;transition:transform .15s;cursor:pointer;}
+.card:active{transform:scale(.98);}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;}
+.card.overdue{border-color:rgba(255,61,87,.3);}.card.overdue::before{background:var(--red);}
+.card.soon{border-color:rgba(255,109,0,.3);}.card.soon::before{background:var(--warn);}
+.card.ok{border-color:rgba(0,200,83,.2);}.card.ok::before{background:var(--accent);}
+.card.completed{border-color:rgba(124,131,209,.3);opacity:.8;}.card.completed::before{background:var(--done);}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.client-name{font-family:'Baloo 2',cursive;font-size:16px;font-weight:700;line-height:1.2;}
+.due-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;margin-left:8px;flex-shrink:0;}
+.badge-overdue{background:rgba(255,61,87,.2);color:var(--red);border:1px solid rgba(255,61,87,.4);}
+.badge-soon{background:rgba(255,109,0,.2);color:var(--warn);border:1px solid rgba(255,109,0,.4);}
+.badge-ok{background:rgba(0,200,83,.15);color:var(--accent);border:1px solid rgba(0,200,83,.3);}
+.badge-completed{background:rgba(124,131,209,.2);color:var(--done);border:1px solid rgba(124,131,209,.4);}
+.card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.meta-pill{font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);padding:2px 8px;border-radius:6px;display:flex;align-items:center;gap:4px;}
+.meta-pill span{color:var(--text);}
+.card-actions{display:flex;gap:8px;margin-top:11px;}
+.btn-wa{flex:1;background:var(--wa);border:none;border-radius:10px;color:#fff;font-family:'Noto Sans',sans-serif;font-size:13px;font-weight:700;padding:9px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:filter .2s;}
+.btn-wa:active{filter:brightness(.9);}
+.btn-wa:disabled{background:#253525;color:var(--muted);cursor:not-allowed;}
+.btn-edit{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:16px;padding:9px 14px;cursor:pointer;}
+
+.fab{position:fixed;bottom:24px;right:calc(50% - 220px);width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;border:none;cursor:pointer;color:#fff;font-size:28px;box-shadow:0 4px 20px rgba(0,200,83,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:200;}
+.fab:active{transform:scale(.93);}
+
+/* ── MODALS ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:flex-end;justify-content:center;}
+.overlay.show{display:flex;}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px 36px;width:100%;max-width:480px;border-top:1px solid var(--border);animation:slideUp .25s ease;max-height:90vh;overflow-y:auto;}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal h2{font-family:'Baloo 2',cursive;font-size:18px;font-weight:800;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;}
+.field input,.field select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 13px;color:var(--text);font-family:'Noto Sans',sans-serif;font-size:14px;outline:none;-webkit-appearance:none;}
+.field input:focus,.field select:focus{border-color:var(--accent2);}
+.field select option{background:var(--card);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.info-box{border-radius:10px;padding:10px 13px;font-size:12px;margin-bottom:12px;line-height:1.6;}
+.info-box.next{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);color:var(--accent);}
+.info-box.freq{background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);color:var(--accent2);}
+.info-box.matured{background:rgba(124,131,209,.1);border:1px solid rgba(124,131,209,.3);color:var(--done);}
+.modal-actions{display:flex;gap:8px;margin-top:16px;}
+.btn-save{flex:1;background:linear-gradient(135deg,var(--accent),#00a844);border:none;border-radius:10px;color:#fff;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;padding:12px;cursor:pointer;}
+.btn-cancel{background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;padding:12px 16px;cursor:pointer;}
+.btn-del{background:rgba(255,61,87,.15);border:1px solid rgba(255,61,87,.3);border-radius:10px;color:var(--red);font-size:14px;padding:12px 14px;cursor:pointer;}
+.msg-preview{background:#111b21;border-radius:14px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.7;color:#e9edef;white-space:pre-wrap;border:1px solid #2a3942;max-height:280px;overflow-y:auto;}
+
+/* ── BULK IMPORT ── */
+.import-zone{border:2px dashed var(--border);border-radius:14px;padding:30px 20px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:16px;}
+.import-zone:hover,.import-zone.drag{border-color:var(--accent2);}
+.import-zone .iz-icon{font-size:36px;margin-bottom:10px;}
+.import-zone p{font-size:13px;color:var(--muted);}
+.import-zone b{color:var(--accent2);}
+.template-hint{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;}
+.template-hint b{color:var(--text);}
+.paste-area{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text);font-size:12px;font-family:monospace;outline:none;resize:vertical;min-height:100px;}
+.paste-area:focus{border-color:var(--accent2);}
+.preview-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;max-height:200px;overflow-y:auto;display:block;}
+.preview-table th{background:var(--card);padding:6px 8px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);}
+.preview-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);}
+.preview-table tr.err td{color:var(--red);}
+.import-tabs{display:flex;gap:0;margin-bottom:16px;background:var(--card);border-radius:10px;padding:3px;}
+.import-tab{flex:1;padding:7px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px;transition:all .2s;}
+.import-tab.active{background:var(--surface);color:var(--accent2);}
+.btn-dl-template{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);border-radius:8px;color:var(--accent2);font-size:12px;padding:7px 12px;cursor:pointer;width:100%;margin-bottom:12px;}
+
+.empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty div{font-size:40px;margin-bottom:12px;}
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;z-index:999;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="authScreen">
+  <div class="auth-logo">🛡️</div>
+  <div class="auth-title">LIC <span>Premium</span> Reminder</div>
+  <div class="auth-sub">Agent Portal — Login to continue</div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('email',this)">Email</div>
+      <div class="auth-tab" onclick="switchAuthTab('mobile',this)">Mobile OTP</div>
+    </div>
+
+    <!-- Email login -->
+    <div id="emailLogin">
+      <div class="afield"><label>Email</label><input id="loginEmail" type="email" placeholder="agent@email.com"></div>
+      <div class="afield"><label>Password</label><input id="loginPass" type="password" placeholder="••••••••"></div>
+      <button class="btn-primary" onclick="loginEmail()">Login</button>
+    </div>
+
+    <!-- Mobile OTP -->
+    <div id="mobileLogin" style="display:none">
+      <div id="mobileStep1">
+        <div class="afield"><label>Mobile Number</label><input id="loginMobile" type="tel" placeholder="+91 98765 43210"></div>
+        <div id="recaptcha-container"></div>
+        <button class="btn-primary" onclick="sendOTP()">Send OTP</button>
+      </div>
+      <div id="mobileStep2" style="display:none">
+        <div class="otp-sent" id="otpSentMsg">OTP sent! Check your SMS.</div>
+        <div class="afield" style="margin-top:12px"><label>Enter OTP</label><input id="loginOTP" type="number" placeholder="6-digit OTP" maxlength="6"></div>
+        <button class="btn-primary" onclick="verifyOTP()">Verify & Login</button>
+        <button class="btn-secondary" onclick="backToMobile()">← Change Number</button>
+      </div>
+    </div>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- ══ REVOKED SCREEN ══ -->
+<div id="revokedScreen">
+  <div class="revoked-icon">🔒</div>
+  <div class="revoked-title">Access Revoked</div>
+  <div class="revoked-msg">Your access to this app has been disabled or has expired. Please contact Sanjaykumar K Bhalja (9924272881) to renew.</div>
+  <button class="btn-secondary" style="margin-top:24px;max-width:200px" onclick="firebase.auth().signOut().then(()=>location.reload())">Logout</button>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="mainApp">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="logo">🛡️</div>
+        <div>
+          <h1>LIC <span>Premium</span> Reminder</h1>
+          <p id="agentNameLabel">Loading…</p>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+    <div class="stats-row" id="statsRow">
+      <div class="stat-chip"><b id="scTotal">0</b> Total</div>
+      <div class="stat-chip overdue"><b id="scOverdue">0</b> Overdue</div>
+      <div class="stat-chip soon"><b id="scSoon">0</b> Soon</div>
+      <div class="stat-chip done"><b id="scDone">0</b> Matured</div>
+      <div class="expiry-chip" id="expiryChip" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="setTab('all',this)">All</div>
+    <div class="tab" onclick="setTab('overdue',this)">⚠️ Overdue</div>
+    <div class="tab" onclick="setTab('soon',this)">🔔 Soon</div>
+    <div class="tab" onclick="setTab('ok',this)">✅ Upcoming</div>
+    <div class="tab" onclick="setTab('completed',this)">🏁 Matured</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="searchInput" placeholder="Search name, policy, mobile…" oninput="renderList()">
+    </div>
+    <button class="btn-import" onclick="openImport()">⬆ Import</button>
+  </div>
+
+  <div class="list" id="clientList"><div class="loading">Loading clients…</div></div>
+  <button class="fab" onclick="openAdd()">+</button>
+</div>
+
+<!-- Add/Edit Client Modal -->
+<div class="overlay" id="formOverlay" onclick="closeForm(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="formTitle">Add Client</h2>
+    <div class="field"><label>Client Name *</label><input id="fName" placeholder="e.g. Ramesh Patel"></div>
+    <div class="field"><label>Policy Number *</label><input id="fPolicy" placeholder="e.g. 123456789"></div>
+    <div class="field"><label>Mobile (with country code) *</label><input id="fMobile" type="tel" placeholder="e.g. 919876543210"></div>
+    <div class="field"><label>Premium Amount (₹)</label><input id="fAmount" type="number" placeholder="e.g. 12000"></div>
+    <div class="row2">
+      <div class="field"><label>Policy Start Date *</label><input id="fStart" type="date" oninput="updatePreview()"></div>
+      <div class="field"><label>Policy Term (Years) *</label><input id="fTerm" type="number" min="1" max="40" placeholder="15" oninput="updatePreview()"></div>
+    </div>
+    <div class="field">
+      <label>Premium Frequency *</label>
+      <select id="fFreq" onchange="updatePreview()">
+        <option value="yearly">Yearly — દર વર્ષે</option>
+        <option value="halfyearly">Half-Yearly — દર 6 મહિને</option>
+        <option value="quarterly">Quarterly — દર 3 મહિને</option>
+      </select>
+    </div>
+    <div id="boxNext" class="info-box next" style="display:none"></div>
+    <div id="boxFreq" class="info-box freq" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeForm()">Cancel</button>
+      <button class="btn-del" id="btnDel" style="display:none" onclick="deleteClient()">🗑</button>
+      <button class="btn-save" onclick="saveClient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp Preview Modal -->
+<div class="overlay" id="msgOverlay" onclick="closeMsg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📤 WhatsApp Reminder</h2>
+    <div class="msg-preview" id="msgPreview"></div>
+    <button class="btn-wa" style="width:100%;padding:13px;font-size:15px;" onclick="openWhatsApp()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.524 5.85L.057 23.5l5.797-1.52A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.853 0-3.587-.5-5.082-1.37l-.364-.217-3.44.903.918-3.352-.237-.386A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+      Send via WhatsApp
+    </button>
+    <button class="btn-cancel" style="width:100%;margin-top:8px;padding:11px;" onclick="closeMsg()">Close</button>
+  </div>
+</div>
+
+<!-- Bulk Import Modal -->
+<div class="overlay" id="importOverlay" onclick="closeImport(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>⬆ Bulk Import Clients</h2>
+    <div class="import-tabs">
+      <div class="import-tab active" onclick="setImportTab('file',this)">Excel / CSV File</div>
+      <div class="import-tab" onclick="setImportTab('paste',this)">Paste from Excel</div>
+    </div>
+
+    <!-- File import -->
+    <div id="importFile">
+      <button class="btn-dl-template" onclick="downloadTemplate()">⬇ Download Excel Template</button>
+      <div class="template-hint">
+        Columns needed: <b>Name · Policy · Mobile · Amount · Start Date · Term · Frequency</b><br>
+        Mobile: with country code (e.g. 919876543210) · Date: YYYY-MM-DD · Frequency: yearly/halfyearly/quarterly
+      </div>
+      <div class="import-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="dragOver(event)" ondrop="dropFile(event)" ondragleave="this.classList.remove('drag')">
+        <div class="iz-icon">📂</div>
+        <p>Tap to choose file or <b>drag & drop</b></p>
+        <p style="margin-top:6px;font-size:11px">.xlsx, .xls, .csv supported</p>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])">
+    </div>
+
+    <!-- Paste import -->
+    <div id="importPaste" style="display:none">
+      <div class="template-hint">
+        Copy cells from Excel/Google Sheets and paste below.<br>
+        Column order: <b>Name · Policy · Mobile · Amount · Start Date · Term · Frequency</b>
+      </div>
+      <textarea class="paste-area" id="pasteArea" placeholder="Paste Excel data here…" oninput="parsePaste()"></textarea>
+    </div>
+
+    <!-- Preview -->
+    <div id="importPreview" style="display:none">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;" id="previewCount"></div>
+      <div style="overflow-x:auto;max-height:200px;overflow-y:auto;">
+        <table class="preview-table" id="previewTable"></table>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeImport()">Cancel</button>
+      <button class="btn-save" id="btnImportSave" style="display:none" onclick="doImport()">Import All</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Firebase init ──
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let currentUser = null;
+let agentData   = null;
+let clients     = [];
+let editId      = null;
+let currentTab  = 'all';
+let currentMsgMobile = '';
+let confirmResult = null;
+let importRows  = [];
+
+// ── Auth state ──
+auth.onAuthStateChanged(async user => {
+  if (!user) { showScreen('auth'); return; }
+  currentUser = user;
+
+  try {
+    const snap = await db.collection('agents').doc(user.uid).get();
+
+    if (!snap.exists) {
+      // First time login — auto create agent document
+      await db.collection('agents').doc(user.uid).set({
+        name: user.email || user.phoneNumber || 'Agent',
+        email: user.email || '',
+        active: true,
+        expiryDate: '',
+        createdAt: new Date().toISOString()
+      });
+      agentData = { name: user.email, active: true, expiryDate: '' };
+    } else {
+      agentData = snap.data();
+    }
+
+    const now = new Date();
+    const expiry = agentData.expiryDate ? new Date(agentData.expiryDate) : null;
+    const active = agentData.active !== false;
+    const expired = expiry && now > expiry;
+
+    if (!active || expired) { showScreen('revoked'); return; }
+
+    showScreen('main');
+    document.getElementById('agentNameLabel').textContent = agentData.name || user.email || user.phoneNumber;
+    if (expiry) {
+      const days = Math.ceil((expiry - now) / 86400000);
+      const chip = document.getElementById('expiryChip');
+      chip.style.display = '';
+      chip.textContent = `Access expires in ${days}d`;
+    }
+    loadClients();
+
+  } catch(e) {
+    // Firestore error — still let them in, just no access control
+    console.error('Firestore error:', e);
+    agentData = { name: user.email || 'Agent', active: true };
+    showScreen('main');
+    document.getElementById('agentNameLabel').textContent = user.email || user.phoneNumber || 'Agent';
+    loadClients();
+  }
+});
+
+function showScreen(s) {
+  document.getElementById('authScreen').style.display   = s==='auth'    ? 'flex' : 'none';
+  document.getElementById('revokedScreen').style.display= s==='revoked' ? 'flex' : 'none';
+  document.getElementById('mainApp').style.display      = s==='main'    ? 'block': 'none';
+}
+
+// ── Auth ──
+function switchAuthTab(tab, el) {
+  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('emailLogin').style.display  = tab==='email'  ? '' : 'none';
+  document.getElementById('mobileLogin').style.display = tab==='mobile' ? '' : 'none';
+  hideErr();
+}
+
+async function loginEmail() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email||!pass) { showErr('Please enter email and password.'); return; }
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) { showErr(friendlyErr(e)); }
+}
+
+async function sendOTP() {
+  const mobile = document.getElementById('loginMobile').value.trim();
+  if (!mobile) { showErr('Enter mobile number with country code (+91…)'); return; }
+  try {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {size:'normal'});
+      await window.recaptchaVerifier.render();
+    }
+    confirmResult = await auth.signInWithPhoneNumber(mobile, window.recaptchaVerifier);
+    document.getElementById('mobileStep1').style.display = 'none';
+    document.getElementById('mobileStep2').style.display = '';
+    document.getElementById('otpSentMsg').style.display  = 'block';
+  } catch(e) { showErr(friendlyErr(e)); }
+}
+
+async function verifyOTP() {
+  const otp = document.getElementById('loginOTP').value.trim();
+  if (!otp||otp.length<6) { showErr('Enter the 6-digit OTP.'); return; }
+  try { await confirmResult.confirm(otp); }
+  catch(e) { showErr('Wrong OTP. Please try again.'); }
+}
+
+function backToMobile() {
+  document.getElementById('mobileStep1').style.display='';
+  document.getElementById('mobileStep2').style.display='none';
+  hideErr();
+}
+
+function doLogout() {
+  auth.signOut();
+  clients=[]; renderList();
+}
+
+function showErr(msg) {
+  const el=document.getElementById('authErr');
+  el.textContent=msg; el.style.display='block';
+}
+function hideErr() { document.getElementById('authErr').style.display='none'; }
+function friendlyErr(e) {
+  const m=e.code||'';
+  if (m.includes('wrong-password')||m.includes('user-not-found')) return 'Wrong email or password.';
+  if (m.includes('too-many-requests')) return 'Too many attempts. Try again later.';
+  if (m.includes('invalid-phone')) return 'Invalid phone number format.';
+  return e.message||'Something went wrong.';
+}
+
+// ── Firestore ──
+async function loadClients() {
+  const snap = await db.collection('agents').doc(currentUser.uid)
+    .collection('clients').orderBy('name').get();
+  clients = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderList();
+}
+
+async function saveToDb(obj) {
+  if (editId) {
+    await db.collection('agents').doc(currentUser.uid)
+      .collection('clients').doc(editId).set(obj);
+  } else {
+    const ref = await db.collection('agents').doc(currentUser.uid)
+      .collection('clients').add(obj);
+    obj.id = ref.id;
+    clients.push(obj);
+  }
+}
+
+// ── Policy logic ──
+function freqMonths(f){ return f==='quarterly'?3:f==='halfyearly'?6:12; }
+function getPolicyInfo(c){
+  const start=new Date(c.start), termYrs=parseInt(c.term)||15, step=freqMonths(c.freq);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const maturity=new Date(start); maturity.setFullYear(maturity.getFullYear()+termYrs); maturity.setHours(0,0,0,0);
+  let nextDue=null;
+  const cur=new Date(start); cur.setMonth(cur.getMonth()+step);
+  while(cur<=maturity){ if(cur>=today){nextDue=new Date(cur);break;} cur.setMonth(cur.getMonth()+step); }
+  return {matured:today>=maturity, maturityDate:maturity, nextDue, totalPayments:termYrs*(12/step)};
+}
+function getDueStatus(c){
+  const pi=getPolicyInfo(c);
+  if(pi.matured||!pi.nextDue) return {status:'completed',label:'Matured 🏁',diff:99999,nextDue:null,maturityDate:pi.maturityDate};
+  const today=new Date(); today.setHours(0,0,0,0);
+  const diff=Math.round((pi.nextDue-today)/86400000);
+  if(diff<0)   return {status:'overdue',label:`${Math.abs(diff)}d overdue`,diff,nextDue:pi.nextDue,maturityDate:pi.maturityDate};
+  if(diff<=15) return {status:'soon',label:diff===0?'Due TODAY!':`Due in ${diff}d`,diff,nextDue:pi.nextDue,maturityDate:pi.maturityDate};
+  return {status:'ok',label:`Due in ${diff}d`,diff,nextDue:pi.nextDue,maturityDate:pi.maturityDate};
+}
+function fmtDate(d){ if(!d)return'—'; return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+function fmtGuj(d){
+  if(!d)return'—';
+  const dt=new Date(d);
+  const mo=['જાન્યુઆરી','ફેબ્રુઆરી','માર્ચ','એપ્રિલ','મે','જૂન','જુલાઈ','ઓગસ્ટ','સપ્ટેમ્બર','ઓક્ટોબર','નવેમ્બર','ડિસેમ્બર'];
+  return `${dt.getDate()} ${mo[dt.getMonth()]} ${dt.getFullYear()}`;
+}
+function freqLabel(f){ return f==='quarterly'?'Quarterly':f==='halfyearly'?'Half-Yearly':'Yearly'; }
+
+// ── Message ──
+function buildMessage(c, nextDue){
+  return `પ્રિય ${c.name},\nતમારા LIC ઈન્શ્યોરન્સ એડવાઇઝર તરફથી શુભેચ્છાઓ. આપની પોલિસીની પ્રીમિયમ ભરવાની તારીખ નજીક આવી રહી છે.\n\n• પોલિસી નંબર: ${c.policy}\n• ચુકવણી તારીખ: ${fmtGuj(nextDue)}\n• પ્રીમિયમ રકમ: ₹${parseInt(c.amount||0).toLocaleString('en-IN')}\n\nતમે LIC App, Google Pay અથવા PhonePe દ્વારા સરળતાથી ચુકવણી કરી શકો છો.\n\nકૃપા કરીને સમયસર ચુકવણી કરી પોલિસી ચાલુ રાખશો. મદદ માટે સંપર્ક કરો.\n\nઆભાર,\nસંજયકુમાર કે. ભાલજા\nમો. 9924272881`;
+}
+
+// ── Tabs & Render ──
+function setTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let list=clients.map(c=>({...c,...getDueStatus(c)}));
+  if(q) list=list.filter(c=>c.name.toLowerCase().includes(q)||c.policy.includes(q)||c.mobile.includes(q));
+  document.getElementById('scTotal').textContent=clients.length;
+  document.getElementById('scOverdue').textContent=list.filter(c=>c.status==='overdue').length;
+  document.getElementById('scSoon').textContent=list.filter(c=>c.status==='soon').length;
+  document.getElementById('scDone').textContent=list.filter(c=>c.status==='completed').length;
+  if(currentTab!=='all') list=list.filter(c=>c.status===currentTab);
+  list.sort((a,b)=>a.diff-b.diff);
+  const el=document.getElementById('clientList');
+  if(!list.length){el.innerHTML=`<div class="empty"><div>🔍</div><p>No clients found.<br><small>Tap + to add or use Import.</small></p></div>`;return;}
+  const grps={overdue:[],soon:[],ok:[],completed:[]};
+  list.forEach(c=>grps[c.status].push(c));
+  const gm={overdue:{l:'⚠️ Overdue',c:'overdue'},soon:{l:'🔔 Due Soon (within 15 days)',c:'soon'},ok:{l:'✅ Upcoming',c:'ok'},completed:{l:'🏁 Matured',c:'completed'}};
+  let html='';
+  for(const [key,grp] of Object.entries(grps)){
+    if(!grp.length) continue;
+    html+=`<div class="section-label ${gm[key].c}">${gm[key].l}</div>`;
+    grp.forEach(c=>{
+      const done=c.status==='completed';
+      const pi=getPolicyInfo(c);
+      const yl=!done?Math.ceil((c.maturityDate-new Date())/(365.25*86400000)):0;
+      html+=`<div class="card ${c.status}" onclick="openEdit('${c.id}')">
+        <div class="card-top"><div class="client-name">${c.name}</div><div class="due-badge badge-${c.status}">${c.label}</div></div>
+        <div class="card-meta">
+          <div class="meta-pill">📋 <span>${c.policy}</span></div>
+          <div class="meta-pill">📱 <span>${c.mobile}</span></div>
+          <div class="meta-pill">💰 <span>₹${parseInt(c.amount||0).toLocaleString('en-IN')}</span></div>
+          <div class="meta-pill">🔁 <span>${freqLabel(c.freq)}</span></div>
+          ${!done?`<div class="meta-pill">📅 <span>Next: ${fmtDate(c.nextDue)}</span></div>`:''}
+          <div class="meta-pill">${done?'🏅':'⏳'} <span>${done?'Matured: '+fmtDate(c.maturityDate):yl+'yr left'}</span></div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-wa" ${done?'disabled':''} ${!done?`onclick="event.stopPropagation();previewMsg('${c.id}')"`:''}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.524 5.85L.057 23.5l5.797-1.52A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.853 0-3.587-.5-5.082-1.37l-.364-.217-3.44.903.918-3.352-.237-.386A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+            ${done?'Policy Matured':'Send Reminder'}
+          </button>
+          <button class="btn-edit" onclick="event.stopPropagation();openEdit('${c.id}')">✏️</button>
+        </div>
+      </div>`;
+    });
+  }
+  el.innerHTML=html;
+}
+
+// ── Form preview ──
+function updatePreview(){
+  const start=document.getElementById('fStart').value, term=parseInt(document.getElementById('fTerm').value)||0, freq=document.getElementById('fFreq').value;
+  const bn=document.getElementById('boxNext'), bf=document.getElementById('boxFreq');
+  if(!start||!term){bn.style.display='none';bf.style.display='none';return;}
+  const pi=getPolicyInfo({start,term,freq});
+  const step=freqMonths(freq), totalPay=term*(12/step);
+  const freqMap={yearly:'12 months',halfyearly:'6 months',quarterly:'3 months'};
+  bf.style.display='block';
+  bf.innerHTML=`🔁 <b>${freqLabel(freq)}</b> · every ${freqMap[freq]} · <b>${totalPay}</b> total payments · Matures <b>${fmtDate(pi.maturityDate)}</b>`;
+  bn.style.display='block';
+  if(pi.matured){bn.className='info-box matured';bn.innerHTML=`🏁 Policy already matured on <b>${fmtDate(pi.maturityDate)}</b>. No reminders needed.`;}
+  else{bn.className='info-box next';bn.innerHTML=`📅 Next due date: <b>${fmtDate(pi.nextDue)}</b>`;}
+}
+
+function previewMsg(id){
+  const c=clients.find(x=>x.id===id); if(!c)return;
+  const ds=getDueStatus(c); if(!ds.nextDue)return;
+  document.getElementById('msgPreview').textContent=buildMessage(c,ds.nextDue);
+  currentMsgMobile=c.mobile;
+  document.getElementById('msgOverlay').classList.add('show');
+}
+function openWhatsApp(){
+  const msg=document.getElementById('msgPreview').textContent;
+  window.open(`https://wa.me/${currentMsgMobile.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+  closeMsg(); showToast('Opening WhatsApp…');
+}
+function closeMsg(e){if(e&&e.target!==document.getElementById('msgOverlay'))return;document.getElementById('msgOverlay').classList.remove('show');}
+
+function openAdd(){
+  editId=null;
+  document.getElementById('formTitle').textContent='Add Client';
+  document.getElementById('btnDel').style.display='none';
+  ['fName','fPolicy','fMobile','fAmount','fStart','fTerm'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fFreq').value='yearly';
+  document.getElementById('boxNext').style.display='none';
+  document.getElementById('boxFreq').style.display='none';
+  document.getElementById('formOverlay').classList.add('show');
+}
+function openEdit(id){
+  const c=clients.find(x=>x.id===id); if(!c)return;
+  editId=id;
+  document.getElementById('formTitle').textContent='Edit Client';
+  document.getElementById('btnDel').style.display='';
+  document.getElementById('fName').value=c.name;
+  document.getElementById('fPolicy').value=c.policy;
+  document.getElementById('fMobile').value=c.mobile;
+  document.getElementById('fAmount').value=c.amount||'';
+  document.getElementById('fStart').value=c.start;
+  document.getElementById('fTerm').value=c.term;
+  document.getElementById('fFreq').value=c.freq||'yearly';
+  document.getElementById('formOverlay').classList.add('show');
+  updatePreview();
+}
+function closeForm(e){if(e&&e.target!==document.getElementById('formOverlay'))return;document.getElementById('formOverlay').classList.remove('show');}
+
+async function saveClient(){
+  const name=document.getElementById('fName').value.trim();
+  const policy=document.getElementById('fPolicy').value.trim();
+  const mobile=document.getElementById('fMobile').value.trim();
+  const amount=document.getElementById('fAmount').value.trim();
+  const start=document.getElementById('fStart').value;
+  const term=document.getElementById('fTerm').value;
+  const freq=document.getElementById('fFreq').value;
+  if(!name||!policy||!mobile||!start||!term){showToast('Fill all required fields');return;}
+  const obj={name,policy,mobile,amount,start,term:parseInt(term),freq};
+  if(editId){
+    await db.collection('agents').doc(currentUser.uid).collection('clients').doc(editId).set(obj);
+    const idx=clients.findIndex(x=>x.id===editId);
+    clients[idx]={id:editId,...obj};
+    showToast('Client updated ✓');
+  } else {
+    const ref=await db.collection('agents').doc(currentUser.uid).collection('clients').add(obj);
+    clients.push({id:ref.id,...obj});
+    showToast('Client added ✓');
+  }
+  renderList();
+  document.getElementById('formOverlay').classList.remove('show');
+}
+
+async function deleteClient(){
+  if(!confirm('Delete this client?'))return;
+  await db.collection('agents').doc(currentUser.uid).collection('clients').doc(editId).delete();
+  clients=clients.filter(x=>x.id!==editId);
+  renderList();
+  document.getElementById('formOverlay').classList.remove('show');
+  showToast('Client deleted');
+}
+
+// ── Bulk Import ──
+function openImport(){
+  importRows=[];
+  document.getElementById('previewCount').textContent='';
+  document.getElementById('previewTable').innerHTML='';
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('btnImportSave').style.display='none';
+  document.getElementById('pasteArea').value='';
+  document.getElementById('fileInput').value='';
+  document.getElementById('importOverlay').classList.add('show');
+  setImportTab('file', document.querySelector('.import-tab'));
+}
+function closeImport(e){if(e&&e.target!==document.getElementById('importOverlay'))return;document.getElementById('importOverlay').classList.remove('show');}
+
+function setImportTab(tab,el){
+  document.querySelectorAll('.import-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('importFile').style.display=tab==='file'?'':'none';
+  document.getElementById('importPaste').style.display=tab==='paste'?'':'none';
+}
+
+function dragOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('drag');}
+function dropFile(e){e.preventDefault();document.getElementById('dropZone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleFile(f);}
+
+function handleFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const data=XLSX.utils.sheet_to_json(ws,{defval:''});
+    parseRows(data.map(r=>[r['Name']||r['name']||'',r['Policy']||r['policy']||'',r['Mobile']||r['mobile']||'',r['Amount']||r['amount']||'',r['Start Date']||r['start']||'',r['Term']||r['term']||'',r['Frequency']||r['freq']||'yearly']));
+  };
+  reader.readAsBinaryString(file);
+}
+
+function parsePaste(){
+  const raw=document.getElementById('pasteArea').value.trim();
+  if(!raw)return;
+  const rows=raw.split('\n').map(r=>r.split('\t').map(c=>c.trim()));
+  parseRows(rows.filter(r=>r.length>=3&&r[0]));
+}
+
+function parseRows(rows){
+  importRows=rows.map(r=>({
+    name:(r[0]||'').toString().trim(),
+    policy:(r[1]||'').toString().trim(),
+    mobile:(r[2]||'').toString().trim(),
+    amount:(r[3]||'').toString().trim(),
+    start:normalizeDate((r[4]||'').toString().trim()),
+    term:parseInt(r[5])||15,
+    freq:normalizeFreq((r[6]||'').toString().trim()),
+    _ok:!!(r[0]&&r[1]&&r[2]&&r[4])
+  }));
+  const ok=importRows.filter(r=>r._ok).length;
+  const bad=importRows.length-ok;
+  document.getElementById('previewCount').textContent=`${ok} valid · ${bad} will be skipped (missing required fields)`;
+  let th='<tr><th>Name</th><th>Policy</th><th>Mobile</th><th>Freq</th><th>Next Due</th></tr>';
+  let td=importRows.map(r=>{
+    const cl=r._ok?'':'err';
+    const pi=r._ok?getPolicyInfo(r):null;
+    return `<tr class="${cl}"><td>${r.name||'—'}</td><td>${r.policy||'—'}</td><td>${r.mobile||'—'}</td><td>${freqLabel(r.freq)}</td><td>${r._ok&&pi?fmtDate(pi.nextDue):'⚠ Error'}</td></tr>`;
+  }).join('');
+  document.getElementById('previewTable').innerHTML=th+td;
+  document.getElementById('importPreview').style.display='block';
+  document.getElementById('btnImportSave').style.display=ok>0?'':'none';
+  document.getElementById('btnImportSave').textContent=`Import ${ok} Clients`;
+}
+
+function normalizeDate(s){
+  if(!s)return'';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  const d=new Date(s);
+  if(!isNaN(d))return d.toISOString().split('T')[0];
+  return s;
+}
+function normalizeFreq(s){
+  const l=s.toLowerCase();
+  if(l.includes('half')||l==='hy'||l==='6')return'halfyearly';
+  if(l.includes('quart')||l==='q'||l==='3')return'quarterly';
+  return'yearly';
+}
+
+async function doImport(){
+  const valid=importRows.filter(r=>r._ok);
+  if(!valid.length)return;
+  const btn=document.getElementById('btnImportSave');
+  btn.textContent='Importing…'; btn.disabled=true;
+  const batch=db.batch();
+  const colRef=db.collection('agents').doc(currentUser.uid).collection('clients');
+  valid.forEach(r=>{
+    const {_ok,...data}=r;
+    const ref=colRef.doc();
+    batch.set(ref,data);
+    clients.push({id:ref.id,...data});
+  });
+  await batch.commit();
+  renderList();
+  document.getElementById('importOverlay').classList.remove('show');
+  showToast(`${valid.length} clients imported ✓`);
+  btn.disabled=false;
+}
+
+function downloadTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['Name','Policy','Mobile','Amount','Start Date','Term','Frequency'],
+    ['Ramesh Patel','987654321','919876543210','15000','2022-04-01','15','yearly'],
+    ['Sunita Sharma','123456789','919988776655','8500','2023-01-10','20','halfyearly'],
+    ['Mahesh Joshi','456789123','917766554433','5500','2021-06-18','10','quarterly'],
+  ]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Clients');
+  XLSX.writeFile(wb,'LIC_Import_Template.xlsx');
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+</script>
+</body>
+</html>
