@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firebase Setup Guide — LIC App</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1923;--surface:#182233;--card:#1e2d42;--border:#2a3f5a;--accent:#00c853;--accent2:#00e5ff;--text:#e8f0fe;--muted:#7a92ad;--gold:#ffc107;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);max-width:600px;margin:0 auto;padding:24px 20px 60px;}
+h1{font-family:'Baloo 2',cursive;font-size:26px;font-weight:800;margin-bottom:6px;}
+h1 span{color:var(--accent);}
+.subtitle{font-size:13px;color:var(--muted);margin-bottom:32px;}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;position:relative;}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;font-family:'Baloo 2',cursive;font-size:16px;font-weight:800;color:#fff;margin-bottom:12px;}
+.step h2{font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;margin-bottom:10px;line-height:1.3;}
+.step p{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:10px;}
+.step p:last-child{margin-bottom:0;}
+.step b{color:var(--text);}
+.step a{color:var(--accent2);text-decoration:none;}
+.step a:hover{text-decoration:underline;}
+code{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12px;font-family:monospace;color:var(--accent2);}
+.code-block{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;font-family:monospace;color:var(--accent2);margin:10px 0;line-height:1.8;overflow-x:auto;white-space:pre;}
+.warn-box{background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.25);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--gold);margin:10px 0;line-height:1.7;}
+.success-box{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--accent);margin:10px 0;line-height:1.7;}
+.rule-box{background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--accent2);margin:10px 0;line-height:1.7;}
+ul{padding-left:18px;margin:8px 0;}
+ul li{font-size:13px;color:var(--muted);line-height:1.9;}
+ul li b{color:var(--text);}
+.img-hint{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);margin:8px 0;display:flex;align-items:center;gap:10px;}
+.done-badge{display:inline-block;background:rgba(0,200,83,.15);border:1px solid rgba(0,200,83,.3);color:var(--accent);border-radius:6px;font-size:11px;font-weight:700;padding:2px 8px;margin-left:8px;}
+hr{border:none;border-top:1px solid var(--border);margin:24px 0;}
+.final-box{background:linear-gradient(135deg,rgba(0,200,83,.1),rgba(0,229,255,.1));border:1px solid rgba(0,229,255,.25);border-radius:16px;padding:20px;text-align:center;}
+.final-box h2{font-family:'Baloo 2',cursive;font-size:20px;font-weight:800;margin-bottom:10px;}
+.final-box p{font-size:13px;color:var(--muted);line-height:1.8;}
+</style>
+</head>
+<body>
+
+<h1>🔥 Firebase <span>Setup Guide</span></h1>
+<p class="subtitle">Follow these steps exactly. Takes ~15 minutes. Completely free.</p>
+
+<!-- STEP 1 -->
+<div class="step">
+  <div class="step-num">1</div>
+  <h2>Create a Firebase Project</h2>
+  <p>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account.</p>
+  <p>Click <b>"Add project"</b> → Name it <b>"LIC-Reminder"</b> → Disable Google Analytics (not needed) → Click <b>"Create project"</b>.</p>
+  <div class="success-box">✓ Wait for it to say "Your new project is ready" then click Continue.</div>
+</div>
+
+<!-- STEP 2 -->
+<div class="step">
+  <div class="step-num">2</div>
+  <h2>Add a Web App to get your Config</h2>
+  <p>Inside your project, click the <b>Web icon (&lt;/&gt;)</b> to add a web app.</p>
+  <p>Give it a nickname like <b>"LIC App"</b> → Click <b>"Register app"</b>.</p>
+  <p>You will see a config block like this — <b>copy the entire object</b>:</p>
+  <div class="code-block">const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "lic-reminder.firebaseapp.com",
+  projectId: "lic-reminder",
+  storageBucket: "lic-reminder.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
+};</div>
+  <div class="warn-box">⚠️ Paste this config into BOTH <b>agent.html</b> and <b>admin.html</b> where it says <code>PASTE_YOUR_apiKey_HERE</code> etc.</div>
+</div>
+
+<!-- STEP 3 -->
+<div class="step">
+  <div class="step-num">3</div>
+  <h2>Enable Authentication</h2>
+  <p>In the left sidebar click <b>Authentication</b> → <b>Get started</b>.</p>
+  <p>Under <b>"Sign-in method"</b> tab, enable these two:</p>
+  <ul>
+    <li><b>Email/Password</b> — click it → toggle Enable → Save</li>
+    <li><b>Phone</b> — click it → toggle Enable → Save</li>
+  </ul>
+  <div class="success-box">✓ Both providers should now show as "Enabled".</div>
+</div>
+
+<!-- STEP 4 -->
+<div class="step">
+  <div class="step-num">4</div>
+  <h2>Create Firestore Database</h2>
+  <p>In the left sidebar click <b>Firestore Database</b> → <b>Create database</b>.</p>
+  <p>Select <b>"Start in production mode"</b> → Choose region <b>asia-south1 (Mumbai)</b> → Click <b>Enable</b>.</p>
+  <div class="warn-box">⚠️ Now you must set up Security Rules or the app won't work.</div>
+  <p>After database is created, click the <b>"Rules"</b> tab and replace everything with:</p>
+  <div class="code-block">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Agents can read/write their own profile
+    match /agents/{agentId} {
+      allow read: if request.auth != null && request.auth.uid == agentId;
+      allow write: if request.auth != null && request.auth.uid == agentId;
+
+      // Agents can read/write their own clients
+      match /clients/{clientId} {
+        allow read, write: if request.auth != null
+          && request.auth.uid == agentId;
+      }
+    }
+
+    // Admin can read/write all agents
+    match /agents/{agentId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == "PASTE_ADMIN_UID_HERE";
+    }
+  }
+}</div>
+  <p>Click <b>Publish</b>. (We'll fill <code>PASTE_ADMIN_UID_HERE</code> in Step 6.)</p>
+</div>
+
+<!-- STEP 5 -->
+<div class="step">
+  <div class="step-num">5</div>
+  <h2>Create Your Admin Account</h2>
+  <p>In Firebase console → <b>Authentication</b> → <b>Users</b> tab → Click <b>"Add user"</b>.</p>
+  <p>Enter your email and a strong password → Click <b>Add user</b>.</p>
+  <div class="success-box">✓ This is your personal admin login. Keep this email & password safe.</div>
+</div>
+
+<!-- STEP 6 -->
+<div class="step">
+  <div class="step-num">6</div>
+  <h2>Get Your Admin UID</h2>
+  <p>Open <b>admin.html</b> in your browser. Login with the email/password you just created.</p>
+  <p>A popup will appear showing your UID — it looks like: <code>abc123xyz789...</code></p>
+  <p>Copy that UID and paste it in <b>two places</b>:</p>
+  <ul>
+    <li>In <b>admin.html</b> where it says <code>PASTE_YOUR_ADMIN_UID_HERE</code></li>
+    <li>In the <b>Firestore Rules</b> where it says <code>PASTE_ADMIN_UID_HERE</code></li>
+  </ul>
+  <div class="warn-box">⚠️ After pasting your UID in admin.html, reload the page. Now only YOU can access the admin panel.</div>
+</div>
+
+<!-- STEP 7 -->
+<div class="step">
+  <div class="step-num">7</div>
+  <h2>Add Your First Agent</h2>
+  <p>In admin.html, tap <b>"+ Add Agent"</b> → fill their name, email, expiry date → Save.</p>
+  <p>Then the agent needs to:</p>
+  <ul>
+    <li>Open <b>agent.html</b> in their browser</li>
+    <li>First time: Go to Firebase Console → Authentication → Add user with their email + set a password → tell them the password</li>
+    <li>They login on agent.html and start adding their clients</li>
+  </ul>
+  <div class="rule-box">💡 <b>Tip:</b> You can also use Firebase's "Send password reset email" button to let agents set their own password without you seeing it.</div>
+</div>
+
+<!-- STEP 8 -->
+<div class="step">
+  <div class="step-num">8</div>
+  <h2>Agent First Login — Linking Step</h2>
+  <p>When an agent logs in for the first time, their Firebase UID is created. The admin panel stores agents by UID, so there's one small step:</p>
+  <ul>
+    <li>Agent logs in → their UID is generated by Firebase Auth</li>
+    <li>You need to go to <b>Firestore Database</b> in Firebase console</li>
+    <li>Find the agent's document (created when you added them) and note their UID from Firebase Auth</li>
+    <li>Either rename the document to their UID, or use the admin panel's Edit → the UID is shown there</li>
+  </ul>
+  <div class="warn-box">⚠️ This is only needed once per agent. After linking, everything works automatically.</div>
+  <div class="success-box">✓ Easier way: When agent logs in, their data is stored under their UID automatically. Just make sure the document ID in Firestore matches their Firebase Auth UID.</div>
+</div>
+
+<!-- STEP 9 -->
+<div class="step">
+  <div class="step-num">9</div>
+  <h2>Disabling / Renewing Agent Access</h2>
+  <p>In <b>admin.html</b>:</p>
+  <ul>
+    <li><b>Disable access</b> — tap 🔴 Disable Access → agent is immediately locked out next time they open the app</li>
+    <li><b>Re-enable</b> — tap ✅ Enable Access</li>
+    <li><b>Change expiry</b> — tap ✏️ Edit → change date → Save</li>
+  </ul>
+  <div class="rule-box">💡 Expiry is checked every time the agent opens the app. Even mid-session, if you disable them they'll see the "Access Revoked" screen on next page load.</div>
+</div>
+
+<!-- STEP 10 -->
+<div class="step">
+  <div class="step-num">10</div>
+  <h2>How to Share the App</h2>
+  <p>The simplest free option — use <a href="https://pages.github.com" target="_blank">GitHub Pages</a> (free hosting):</p>
+  <ul>
+    <li>Create a free account at <a href="https://github.com" target="_blank">github.com</a></li>
+    <li>Create a new repository named <code>lic-app</code></li>
+    <li>Upload <b>agent.html</b> and <b>admin.html</b></li>
+    <li>Go to Settings → Pages → Source: main branch → Save</li>
+    <li>Your app will be live at: <code>yourusername.github.io/lic-app/agent.html</code></li>
+  </ul>
+  <div class="success-box">✓ Share the agent.html URL with agents. Bookmark admin.html for yourself. Both work on mobile browsers perfectly.</div>
+</div>
+
+<hr>
+
+<div class="final-box">
+  <h2>🎉 You're all set!</h2>
+  <p>Your LIC Premium Reminder SaaS is live.<br>
+  Agents log in → manage their clients → send Gujarati WhatsApp reminders.<br>
+  You control who has access from admin.html.<br><br>
+  <b>Questions?</b> Each file has comments marked with 🔥 to guide you.</p>
+</div>
+
+</body>
+</html>
